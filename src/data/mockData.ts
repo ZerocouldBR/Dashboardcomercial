@@ -191,6 +191,7 @@ export const mockDashboardData: DashboardData = {
       diasSemComprar: 3,
       valorMedioCompra: 19860.87,
       frequenciaCompra: 2.1,
+      titulosEmAberto: 0,
       valorInadimplente: 0,
       risco: 'baixo'
     },
@@ -221,6 +222,7 @@ export const mockDashboardData: DashboardData = {
       diasSemComprar: 5,
       valorMedioCompra: 20402.63,
       frequenciaCompra: 1.7,
+      titulosEmAberto: 0,
       valorInadimplente: 0,
       risco: 'baixo'
     },
@@ -251,6 +253,7 @@ export const mockDashboardData: DashboardData = {
       diasSemComprar: 1,
       valorMedioCompra: 18653.13,
       frequenciaCompra: 1.5,
+      titulosEmAberto: 0,
       valorInadimplente: 0,
       risco: 'baixo'
     }
@@ -284,6 +287,7 @@ export const mockDashboardData: DashboardData = {
       diasSemComprar: 159,
       valorMedioCompra: 18236.25,
       frequenciaCompra: 0.7,
+      titulosEmAberto: 0,
       valorInadimplente: 0,
       risco: 'medio'
     },
@@ -314,6 +318,7 @@ export const mockDashboardData: DashboardData = {
       diasSemComprar: 185,
       valorMedioCompra: 16460.00,
       frequenciaCompra: 0.5,
+      titulosEmAberto: 0,
       valorInadimplente: 0,
       risco: 'medio'
     }
@@ -347,6 +352,7 @@ export const mockDashboardData: DashboardData = {
       diasSemComprar: 74,
       valorMedioCompra: 19546.67,
       frequenciaCompra: 1.1,
+      titulosEmAberto: 0,
       valorInadimplente: 45000,
       risco: 'alto'
     },
@@ -377,6 +383,7 @@ export const mockDashboardData: DashboardData = {
       diasSemComprar: 90,
       valorMedioCompra: 19654.44,
       frequenciaCompra: 0.9,
+      titulosEmAberto: 0,
       valorInadimplente: 32650,
       risco: 'alto'
     }
