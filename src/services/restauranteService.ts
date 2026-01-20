@@ -6,14 +6,16 @@ import type {
   RegiaoProspeccao,
   RotaProspeccao
 } from '../types';
+import { googlePlacesService } from './googlePlacesService';
+import { cnpjService } from './cnpjService';
 
 /**
  * Serviço de Busca e Gestão de Restaurantes
  *
- * Para integração com APIs reais:
- * - Google Places API: para buscar estabelecimentos
- * - Nominatim (OpenStreetMap): para geocoding gratuito
- * - Google Maps API: para rotas e distâncias
+ * Integrado com:
+ * - Google Places API: busca de estabelecimentos reais com avaliações
+ * - ReceitaWS/BrasilAPI: consulta de CNPJ e dados cadastrais
+ * - Nominatim (OpenStreetMap): geocoding gratuito
  */
 
 class RestauranteService {
@@ -473,6 +475,202 @@ class RestauranteService {
 
       this.salvarNoLocalStorage();
     }
+  }
+
+  /**
+   * Busca restaurantes usando Google Places API
+   */
+  async buscarRestaurantesGoogle(
+    localizacao: Localizacao,
+    raioKm: number = 5,
+    tipo: string = 'restaurant'
+  ): Promise<Restaurante[]> {
+    if (!googlePlacesService.isConfigured()) {
+      console.warn('Google Places API não configurada. Use dados locais ou configure a API.');
+      return this.buscarRestaurantesProximos(localizacao, raioKm);
+    }
+
+    try {
+      const resultados = await googlePlacesService.buscarRestaurantesProximos(
+        localizacao,
+        raioKm * 1000, // Converter km para metros
+        tipo
+      );
+
+      // Converter para Restaurante completo e adicionar IDs
+      const restaurantes: Restaurante[] = resultados.map(r => ({
+        id: `google-${r.googlePlaceId || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        nome: r.nome!,
+        endereco: r.endereco!,
+        cidade: r.cidade!,
+        estado: r.estado!,
+        localizacao: r.localizacao!,
+        tipoEstabelecimento: r.tipoEstabelecimento!,
+        status: r.status!,
+        potencial: r.potencial!,
+        dataProspeccao: r.dataProspeccao!,
+        fonte: 'busca_automatica',
+        ...r
+      }));
+
+      // Salvar automaticamente os restaurantes encontrados
+      for (const rest of restaurantes) {
+        // Verificar se já existe pelo googlePlaceId
+        const existe = this.restaurantes.find(r => r.googlePlaceId === rest.googlePlaceId);
+        if (!existe) {
+          this.restaurantes.push(rest);
+        }
+      }
+
+      this.salvarNoLocalStorage();
+
+      return restaurantes;
+    } catch (error) {
+      console.error('Erro ao buscar no Google Places:', error);
+      // Fallback para busca local
+      return this.buscarRestaurantesProximos(localizacao, raioKm);
+    }
+  }
+
+  /**
+   * Busca restaurantes por texto usando Google
+   */
+  async buscarRestaurantesPorTextoGoogle(
+    query: string,
+    localizacao?: Localizacao,
+    raioKm?: number
+  ): Promise<Restaurante[]> {
+    if (!googlePlacesService.isConfigured()) {
+      console.warn('Google Places API não configurada');
+      return [];
+    }
+
+    try {
+      const resultados = await googlePlacesService.buscarRestaurantesPorTexto(
+        query,
+        localizacao,
+        raioKm ? raioKm * 1000 : undefined
+      );
+
+      const restaurantes: Restaurante[] = resultados.map(r => ({
+        id: `google-${r.googlePlaceId || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        nome: r.nome!,
+        endereco: r.endereco!,
+        cidade: r.cidade!,
+        estado: r.estado!,
+        localizacao: r.localizacao!,
+        tipoEstabelecimento: r.tipoEstabelecimento!,
+        status: r.status!,
+        potencial: r.potencial!,
+        dataProspeccao: r.dataProspeccao!,
+        fonte: 'busca_automatica',
+        ...r
+      }));
+
+      return restaurantes;
+    } catch (error) {
+      console.error('Erro ao buscar por texto no Google Places:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Enriquece um restaurante com dados do Google Places
+   */
+  async enriquecerComGoogle(restaurante: Restaurante): Promise<Restaurante> {
+    if (!googlePlacesService.isConfigured()) {
+      return restaurante;
+    }
+
+    try {
+      return await googlePlacesService.enriquecerRestaurante(restaurante);
+    } catch (error) {
+      console.error('Erro ao enriquecer com Google:', error);
+      return restaurante;
+    }
+  }
+
+  /**
+   * Consulta dados de CNPJ e enriquece o restaurante
+   */
+  async consultarCNPJ(restaurante: Restaurante, cnpj: string): Promise<Restaurante> {
+    try {
+      return await cnpjService.enriquecerComCNPJ(restaurante, cnpj);
+    } catch (error) {
+      console.error('Erro ao consultar CNPJ:', error);
+      return restaurante;
+    }
+  }
+
+  /**
+   * Enriquece completamente um restaurante (Google + CNPJ)
+   */
+  async enriquecerCompleto(
+    restaurante: Restaurante,
+    cnpj?: string
+  ): Promise<Restaurante> {
+    let restauranteEnriquecido = restaurante;
+
+    // Enriquecer com Google
+    if (googlePlacesService.isConfigured()) {
+      restauranteEnriquecido = await this.enriquecerComGoogle(restauranteEnriquecido);
+    }
+
+    // Enriquecer com CNPJ se fornecido
+    if (cnpj) {
+      restauranteEnriquecido = await this.consultarCNPJ(restauranteEnriquecido, cnpj);
+    }
+
+    // Atualizar no armazenamento
+    await this.atualizarRestaurante(restauranteEnriquecido.id, restauranteEnriquecido);
+
+    return restauranteEnriquecido;
+  }
+
+  /**
+   * Gera relatório de crédito para um restaurante
+   */
+  gerarRelatorioCredito(restaurante: Restaurante) {
+    return cnpjService.gerarRelatorioCreditoSimplificado(restaurante);
+  }
+
+  /**
+   * Busca unificada: tenta Google primeiro, depois local
+   */
+  async buscarUnificado(
+    localizacao: Localizacao,
+    raioKm: number = 5,
+    filtros?: FiltrosBuscaRestaurante
+  ): Promise<Restaurante[]> {
+    let restaurantes: Restaurante[] = [];
+
+    // Tentar Google Places primeiro
+    if (googlePlacesService.isConfigured()) {
+      try {
+        restaurantes = await this.buscarRestaurantesGoogle(localizacao, raioKm);
+      } catch (error) {
+        console.warn('Falha ao buscar no Google, usando dados locais');
+      }
+    }
+
+    // Complementar com dados locais
+    const locais = await this.buscarRestaurantes({
+      localizacao,
+      raio: raioKm,
+      ...filtros
+    });
+
+    // Mesclar resultados evitando duplicatas
+    for (const local of locais) {
+      const jaExiste = restaurantes.some(
+        r => r.googlePlaceId && r.googlePlaceId === local.googlePlaceId
+      );
+      if (!jaExiste) {
+        restaurantes.push(local);
+      }
+    }
+
+    return restaurantes;
   }
 }
 

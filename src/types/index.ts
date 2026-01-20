@@ -338,6 +338,30 @@ export interface Restaurante {
   numeroFuncionarios?: number;
   tempoMercado?: number; // em anos
   distanciaFilial?: number; // em km
+  // Dados do Google Places
+  googlePlaceId?: string;
+  avaliacaoGoogle?: number; // 1-5
+  totalAvaliacoes?: number;
+  nivelPreco?: number; // 1-4 ($ a $$$$)
+  fotos?: string[]; // URLs das fotos
+  // Dados de CNPJ
+  cnpj?: string;
+  razaoSocial?: string;
+  nomeFantasia?: string;
+  dataAbertura?: string;
+  situacaoCadastral?: string;
+  atividadePrincipal?: string;
+  capitalSocial?: number;
+  // Dados do proprietário/sócios
+  socios?: {
+    nome: string;
+    cpf?: string;
+    qualificacao: string; // Ex: "Administrador", "Sócio"
+    dataEntrada?: string;
+  }[];
+  // Dados para abordagem
+  scoreProspeccao?: number; // 0-100 calculado automaticamente
+  motivosAbordagem?: string[]; // Razões para priorizar este cliente
 }
 
 /**
